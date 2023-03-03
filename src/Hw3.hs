@@ -40,10 +40,11 @@ foldLeft = foldl'
 -- 30
 
 sqSum :: [Int] -> Int
+sqSum [] = 0
 sqSum xs = foldLeft f base xs
   where
-   f a x = error "TBD: sqSum f"
-   base  = error "TBD: sqSum base"
+   f a x = (a + x*x)
+   base  = 0
 
 --------------------------------------------------------------------------------
 -- | `pipe [f1,...,fn] x` should return `f1(f2(...(fn x)))`
@@ -58,10 +59,11 @@ sqSum xs = foldLeft f base xs
 -- 24
 
 pipe :: [(a -> a)] -> (a -> a)
+pipe []   = \x -> x
 pipe fs   = foldLeft f base fs
   where
-    f a x = error "TBD: pipe: f"
-    base  = error "TBD: pipe: base"
+    f a x = a . x
+    base  = \b -> b
 
 --------------------------------------------------------------------------------
 -- | `sepConcat sep [s1,...,sn]` returns `s1 ++ sep ++ s2 ++ ... ++ sep ++ sn`
@@ -79,9 +81,9 @@ sepConcat :: String -> [String] -> String
 sepConcat sep []     = ""
 sepConcat sep (x:xs) = foldLeft f base l
   where
-    f a x            = error "TBD:sepConcat:f"
-    base             = error "TBD:sepConcat:base"
-    l                = error "TBD:l"
+    f a x            = a ++ sep ++ x
+    base             = x
+    l                = xs
 
 intString :: Int -> String
 intString = show
@@ -100,7 +102,7 @@ intString = show
 -- "[[1, 2, 3], [4, 5], [6], []]"
 
 stringOfList :: (a -> String) -> [a] -> String
-stringOfList f xs = error "TBD:stringOfList"
+stringOfList f xs = "[" ++ sepConcat ", " (map f xs) ++ "]"
 
 --------------------------------------------------------------------------------
 -- | `clone x n` returns a `[x,x,...,x]` containing `n` copies of `x`
@@ -112,7 +114,11 @@ stringOfList f xs = error "TBD:stringOfList"
 -- ["foo", "foo"]
 
 clone :: a -> Int -> [a]
-clone x n = error "TBD:clone"
+clone x n = helper [] n
+  where
+    helper xs i
+      | i <= 0  = xs
+      | otherwise = helper (x:xs) (i - 1)
 
 type BigInt = [Int]
 
@@ -128,7 +134,9 @@ type BigInt = [Int]
 -- ([1,0,0,2], [0,0,9,9])
 
 padZero :: BigInt -> BigInt -> (BigInt, BigInt)
-padZero l1 l2 = error "TBD:padZero"
+padZero l1 l2 = if length l1 > length l2
+                then (l1, clone 0 (length l1 - length l2) ++ l2)
+                else (clone 0 (length l2 - length l1) ++ l1, l2)
 
 --------------------------------------------------------------------------------
 -- | `removeZero ds` strips out all leading `0` from the left-side of `ds`.
@@ -143,7 +151,9 @@ padZero l1 l2 = error "TBD:padZero"
 -- []
 
 removeZero :: BigInt -> BigInt
-removeZero ds = error "TBD:removeZero"
+removeZero ds | null ds      = []
+              | head ds /= 0 = ds
+              | otherwise    = removeZero (tail ds)
 
 
 --------------------------------------------------------------------------------
@@ -159,10 +169,10 @@ bigAdd :: BigInt -> BigInt -> BigInt
 bigAdd l1 l2     = removeZero res
   where
     (l1', l2')   = padZero l1 l2
-    res          = foldLeft f base args
-    f a x        = error "TBD:bigAdd:f"
-    base         = error "TBD:bigAdd:base"
-    args         = error "TBD:bigAdd:args"
+    res          = snd (foldLeft f base args)
+    f a x        = ((fst a + fst x + snd x) `div` 10, ((fst a + fst x + snd x) `mod` 10) : snd a )
+    base         = (0,[]) 
+    args         = zip (reverse (0:l1')) (reverse (0:l2')) 
 
 
 --------------------------------------------------------------------------------
@@ -173,7 +183,12 @@ bigAdd l1 l2     = removeZero res
 -- [8,9,9,9,1]
 
 mulByInt :: Int -> BigInt -> BigInt
-mulByInt i n = error "TBD:mulByInt"
+mulByInt i n = removeZero res
+  where
+    res     = snd (foldLeft f base args)
+    f a x   = ((fst a + (x * i)) `div` 10, ((fst a + (x * i)) `mod` 10) : snd a )
+    base    = (0, []) -- same as bigAdd, first is carry to add, second is list of digits
+    args    = reverse (0:n) -- need an extra digit in msd for carry
 
 --------------------------------------------------------------------------------
 -- | `bigMul n1 n2` returns the `BigInt` representing the product of `n1` and `n2`.
@@ -188,6 +203,6 @@ bigMul :: BigInt -> BigInt -> BigInt
 bigMul l1 l2 = res
   where
     (_, res) = foldLeft f base args
-    f a x    = error "TBD:bigMul:f"
-    base     = error "TBD:bigMul:base"
-    args     = error "TBD:bigMul:args"
+    f a x    = ((fst a) + 1, bigAdd (snd a) ((mulByInt x l1) ++ (clone 0 (fst a))) )
+    base     = (0, [])
+    args     = reverse l2
